@@ -3,6 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using AutoMapper;
 using DatingApp.API.Data;
 using DatingApp.API.Dto;
 using DatingApp.API.Models;
@@ -19,9 +20,13 @@ namespace DatingApp.API.Controllers
         private readonly IAuthRepository authRepo;
         private readonly ISessionRepository sessionRepo;
         private readonly IConfiguration config;
+        private readonly IMapper mapper;
+        private readonly IPhotoRepository photoRepo;
 
-        public AuthController(IAuthRepository authRepo, ISessionRepository sessionRepo, IConfiguration config)
+        public AuthController(IAuthRepository authRepo, IPhotoRepository photoRepo, ISessionRepository sessionRepo, IConfiguration config, IMapper mapper)
         {
+            this.photoRepo = photoRepo;
+            this.mapper = mapper;
             this.authRepo = authRepo;
             this.sessionRepo = sessionRepo;
             this.config = config;
@@ -53,7 +58,7 @@ namespace DatingApp.API.Controllers
 
             Session session = this.sessionRepo.Create(userFromRepo);
 
-            var claims = new []
+            var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, userFromRepo.Id.ToString()),
                 new Claim(ClaimTypes.Name, userFromRepo.UserName),
@@ -62,7 +67,7 @@ namespace DatingApp.API.Controllers
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(this.config.GetSection("AppSettings:Token").Value));
 
-            var credentials =  new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
             var tokenDescriptor = new SecurityTokenDescriptor()
             {
@@ -79,7 +84,14 @@ namespace DatingApp.API.Controllers
 
             await this.sessionRepo.Login(session, token);
 
-            return Ok(new {token = token});
+            var userToReturn = this.mapper.Map<UserForListDto>(userFromRepo);
+            userToReturn.PhotoUrl = (await this.photoRepo.GetMainPhoto(userToReturn.Id))?.Url;
+
+            return Ok(new
+            {
+                token = token,
+                info = userToReturn
+            });
         }
     }
 }
