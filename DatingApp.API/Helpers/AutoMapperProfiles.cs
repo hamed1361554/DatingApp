@@ -19,6 +19,7 @@ namespace DatingApp.API.Helpers
             CreateMap<Photo, PhotoDto>();
             CreateMap<PhotoForCreateDto, Photo>();
             CreateMap<Photo, PhotoForReturnDto>();
+            CreateMap<UserForRegisterDto, User>();
         }
 
         private string GetMainPhotoUrl(User src)
